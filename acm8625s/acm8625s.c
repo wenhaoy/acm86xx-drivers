@@ -134,6 +134,8 @@ static const uint32_t acm8625s_volume[] = {
 #define ACM8625S_VOLUME_MAX	((int)ARRAY_SIZE(acm8625s_volume) - 1)
 #define ACM8625S_VOLUME_MIN	0
 
+#define ACM8625S_VOLUME_0DB	110
+
 struct acm8625s_priv {
 	struct i2c_client		*i2c;
 
@@ -263,8 +265,9 @@ static void send_cfg(struct regmap *rm,
 {
 	unsigned int i;
 
-	for (i = 0; i + 1 < len; i += 2)
+	for (i = 0; i + 1 < len; i += 2) {
 		regmap_write(rm, s[i], s[i + 1]);
+	}
 }
 
 static int acm8625s_trigger(struct snd_pcm_substream *substream, int cmd,
@@ -480,8 +483,8 @@ static int acm8625s_i2c_probe(struct i2c_client *i2c)
 
 	release_firmware(fw);
 
-	acm8625s->vol[0] = ACM8625S_VOLUME_MIN;
-	acm8625s->vol[1] = ACM8625S_VOLUME_MIN;
+	acm8625s->vol[0] = ACM8625S_VOLUME_0DB;
+	acm8625s->vol[1] = ACM8625S_VOLUME_0DB;
 
 	usleep_range(100000, 150000);
 
