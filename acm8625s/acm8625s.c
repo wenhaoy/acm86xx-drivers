@@ -48,6 +48,21 @@ static const uint8_t dsp_cfg_preboot[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+static const uint8_t dsp_cfg_default[] = {
+	0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0b,
+	0x5c, 0x80, 0x5d, 0x9e, 0x5e, 0x02, 0x5f, 0x9e,
+	0x60, 0x80, 0x61, 0x9e, 0x62, 0x03, 0x63, 0x9e,
+	0x00, 0x04, 0x88, 0x00, 0x89, 0xe2, 0x8a, 0xc4,
+	0x8b, 0x6b, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00,
+	0x11, 0x03, 0x02, 0x00, 0x06, 0x30, 0x28, 0x00,
+	0x05, 0xc6, 0x03, 0x02, 0x01, 0x84, 0x00, 0x00,
+	0x04, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x03, 0x13, 0x1d, 0x00, 0x00,
+	0x04, 0x03
+};
+
 static const uint32_t acm8625s_volume[] = {
 	0x0000001B, /*   0, -110dB */ 0x0000001E, /*   1, -109dB */
 	0x00000021, /*   2, -108dB */ 0x00000025, /*   3, -107dB */
@@ -314,7 +329,10 @@ static void do_work(struct work_struct *work)
 	usleep_range(5000, 10000);
 	send_cfg(rm, dsp_cfg_preboot, ARRAY_SIZE(dsp_cfg_preboot));
 	usleep_range(5000, 15000);
-	send_cfg(rm, acm8625s->dsp_cfg_data, acm8625s->dsp_cfg_len);
+	if (acm8625s->dsp_cfg_data)
+		send_cfg(rm, acm8625s->dsp_cfg_data, acm8625s->dsp_cfg_len);
+	else
+		send_cfg(rm, dsp_cfg_default, ARRAY_SIZE(dsp_cfg_default));
 
 	acm8625s->is_powered = true;
 	acm8625s_refresh(acm8625s);
@@ -464,24 +482,26 @@ static int acm8625s_i2c_probe(struct i2c_client *i2c)
 	snprintf(filename, sizeof(filename), "acm8625s_dsp_%s.bin",
 		 config_name);
 	ret = request_firmware(&fw, filename, dev);
-	if (ret)
-		return ret;
+	if (!ret) {
+		if ((fw->size < 2) || (fw->size & 1)) {
+			dev_err(dev, "firmware is invalid\n");
+			release_firmware(fw);
+			return -EINVAL;
+		}
 
-	if ((fw->size < 2) || (fw->size & 1)) {
-		dev_err(dev, "firmware is invalid\n");
+		acm8625s->dsp_cfg_len = fw->size;
+		acm8625s->dsp_cfg_data = devm_kmalloc(dev, fw->size, GFP_KERNEL);
+		if (!acm8625s->dsp_cfg_data) {
+			release_firmware(fw);
+			return -ENOMEM;
+		}
+		memcpy(acm8625s->dsp_cfg_data, fw->data, fw->size);
+
 		release_firmware(fw);
-		return -EINVAL;
+	} else {
+		acm8625s->dsp_cfg_len = 0;
+		acm8625s->dsp_cfg_data = NULL;
 	}
-
-	acm8625s->dsp_cfg_len = fw->size;
-	acm8625s->dsp_cfg_data = devm_kmalloc(dev, fw->size, GFP_KERNEL);
-	if (!acm8625s->dsp_cfg_data) {
-		release_firmware(fw);
-		return -ENOMEM;
-	}
-	memcpy(acm8625s->dsp_cfg_data, fw->data, fw->size);
-
-	release_firmware(fw);
 
 	acm8625s->vol[0] = ACM8625S_VOLUME_0DB;
 	acm8625s->vol[1] = ACM8625S_VOLUME_0DB;
