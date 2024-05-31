@@ -157,7 +157,7 @@ struct acm8615_priv {
 
 	struct regmap			*regmap;
 
-	int						vol[1];
+	int						vol[2];
 	bool					is_powered;
 	bool					is_muted;
 
@@ -202,7 +202,7 @@ static int acm8615_vol_info(struct snd_kcontrol *kcontrol,
 			     struct snd_ctl_elem_info *uinfo)
 {
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 1;
+	uinfo->count = 2;
 
 	uinfo->value.integer.min = ACM8615_VOLUME_MIN;
 	uinfo->value.integer.max = ACM8615_VOLUME_MAX;
@@ -219,6 +219,7 @@ static int acm8615_vol_get(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&acm8615->lock);
 	ucontrol->value.integer.value[0] = acm8615->vol[0];
+	ucontrol->value.integer.value[1] = acm8615->vol[1];
 	mutex_unlock(&acm8615->lock);
 
 	return 0;
@@ -242,10 +243,13 @@ static int acm8615_vol_put(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 
 	mutex_lock(&acm8615->lock);
-	if (acm8615->vol[0] != ucontrol->value.integer.value[0]) {
+	if (acm8615->vol[0] != ucontrol->value.integer.value[0] ||
+	    acm8615->vol[1] != ucontrol->value.integer.value[1]) {
 		acm8615->vol[0] = ucontrol->value.integer.value[0];
-		dev_dbg(component->dev, "set vol=%d (is_powered=%d)\n",
-			acm8615->vol[0], acm8615->is_powered);
+		acm8615->vol[1] = ucontrol->value.integer.value[1];
+		dev_dbg(component->dev, "set vol=%d/%d (is_powered=%d)\n",
+			acm8615->vol[0], acm8615->vol[1],
+			acm8615->is_powered);
 		if (acm8615->is_powered)
 			acm8615_refresh(acm8615);
 		ret = 1;
