@@ -1,0 +1,23 @@
+#include <stdio.h>
+
+int main() {
+    // 定义 dsp_cfg_preboot 数据
+    static const uint8_t dsp_cfg_preboot[] = {
+        0x00, 0x00, 0x04, 0x00, 0xfc, 0x86, 0xfd, 0x15,
+        0xfe, 0x25, 0x00, 0x01, 0x02, 0x20, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+
+    // 打开文件以写入二进制数据
+    FILE *file = fopen("dsp_cfg_preboot.bin", "wb");
+    if (file) {
+        // 写入 dsp_cfg_preboot 数据
+        fwrite(dsp_cfg_preboot, sizeof(dsp_cfg_preboot), 1, file);
+        fclose(file);
+        printf("dsp_cfg_preboot.bin saved successfully.\n");
+    } else {
+        printf("Error opening file for writing.\n");
+    }
+
+    return 0;
+}

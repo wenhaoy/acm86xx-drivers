@@ -326,8 +326,10 @@ static void do_work(struct work_struct *work)
 	send_cfg(rm, dsp_cfg_preboot, ARRAY_SIZE(dsp_cfg_preboot));
 	usleep_range(5000, 15000);
 	if (acm8615->dsp_cfg_data)
+		dev_info(&acm8615->i2c->dev, "Loading DSP config from DTS\n");
 		send_cfg(rm, acm8615->dsp_cfg_data, acm8615->dsp_cfg_len);
 	else
+		dev_info(&acm8615->i2c->dev, "No DSP config in DTS, using default config\n");
 		send_cfg(rm, dsp_cfg_default, ARRAY_SIZE(dsp_cfg_default));
 
 	acm8615->is_powered = true;
@@ -444,6 +446,38 @@ static const struct regmap_config acm8615_regmap = {
 
 static int acm8615_i2c_probe(struct i2c_client *i2c)
 {
+	
+    int ret;
+    int fw_size;
+
+
+    
+    ret = of_property_read_u8_array(dev->of_node, "acme,dsp-firmware-dsp_cfg_preboot", NULL, 0);
+    if (ret < 0) {
+        dev_err(dev, "No firmware found in DTS\n");
+        return -EINVAL;
+    }
+
+    fw_size = ret;  
+
+    acm8615->dsp_cfg_data = devm_kmalloc(dev, fw_size, GFP_KERNEL);
+    if (!acm8615->dsp_cfg_data)
+        return -ENOMEM;
+
+    ret = of_property_read_u8_array(dev->of_node, "acme,dsp-firmware-dsp_cfg_preboot", acm8615->dsp_cfg_data, fw_size);
+    if (ret < 0) {
+        dev_err(dev, "Failed to read firmware data from DTS\n");
+        return -EINVAL;
+    }
+
+    dev_info(dev, "Firmware found in DTS\n");
+    acm8615->dsp_cfg_len = fw_size;
+
+    return 0;
+
+
+
+
 	struct device *dev = &i2c->dev;
 	struct regmap *regmap;
 	struct acm8615_priv *acm8615;
@@ -467,6 +501,8 @@ static int acm8615_i2c_probe(struct i2c_client *i2c)
 		return -ENOMEM;
 
 	acm8615->i2c = i2c;
+	acm8615->dsp_cfg_data = NULL;
+    acm8615->dsp_cfg_len = 0;
 
 	dev_set_drvdata(dev, acm8615);
 	acm8615->regmap = regmap;
@@ -477,24 +513,9 @@ static int acm8615_i2c_probe(struct i2c_client *i2c)
 
 	snprintf(filename, sizeof(filename), "acm8615_dsp_%s.bin",
 		 config_name);
-	ret = request_firmware(&fw, filename, dev);
-	if (!ret) {
-		if ((fw->size < 2) || (fw->size & 1)) {
-			dev_err(dev, "firmware is invalid\n");
-			release_firmware(fw);
-			return -EINVAL;
-		}
-
-		acm8615->dsp_cfg_len = fw->size;
-		acm8615->dsp_cfg_data = devm_kmalloc(dev, fw->size, GFP_KERNEL);
-		if (!acm8615->dsp_cfg_data) {
-			release_firmware(fw);
-			return -ENOMEM;
-		}
-		memcpy(acm8615->dsp_cfg_data, fw->data, fw->size);
-
-		release_firmware(fw);
-	} else {
+	//ret = request_firmware(&fw, filename, dev);
+	
+	else {
 		acm8615->dsp_cfg_len = 0;
 		acm8615->dsp_cfg_data = NULL;
 	}

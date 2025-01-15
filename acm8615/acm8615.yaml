@@ -13,6 +13,7 @@ description: |
   The ACM8615 is a class D audio amplifier with a built-in DSP.
 
 properties:
+  acme,dsp-firmware-data:
   compatible:
     enum:
       - acme,acm8615
@@ -24,10 +25,12 @@ properties:
 
   acme,dsp-config-name:
     description: |
-      The name of the DSP configuration that should be loaded for this
-      instance. Configuration blobs are sequences of register writes
-      generated from ACME Audio Tuning tool.
-    $ref: /schemas/types.yaml#/definitions/string
+      Binary data for the DSP firmware. This replaces the need for an external
+      firmware file in `/lib/firmware`.
+    $ref: /schemas/types.yaml#/definitions/uint8-array
+    maxItems: 1024
+
+
 
 examples:
   - |
@@ -41,5 +44,6 @@ examples:
             acme,dsp-config-name = "mono_pbtl_48khz";
         };
     };
+
 
 additionalProperties: true
