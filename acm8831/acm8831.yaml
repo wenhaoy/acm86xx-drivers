@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/sound/acm8831.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: ACM8831 audio amplifier
+
+maintainers:
+  - Wenhao Yang <wenhaoy@acme-semi.com>
+
+description: |
+  The ACM8831 is a high power single-channel class D audio amplifier with a built-in DSP.
+
+properties:
+  compatible:
+    enum:
+      - acme,acm8831
+
+  reg:
+    maxItems: 1
+    description: |
+      I2C address of the amplifier. See the datasheet for possible values.
+
+  acme,dsp-config-name:
+    description: |
+      The name of the DSP configuration that should be loaded for this
+      instance. Configuration blobs are sequences of register writes
+      generated from ACME Audio Tuning tool.
+    $ref: /schemas/types.yaml#/definitions/string
+
+examples:
+  - |
+    i2c0 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        acm8831: acm8831@38 {
+            reg = <0x38>;
+            compatible = "acme,acm8831";
+
+            acme,dsp-config-name = "mono_48khz";
+        };
+    };
+
+additionalProperties: true
